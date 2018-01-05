@@ -1,0 +1,6 @@
+psycopg2
+flask-responses
+flask
+pytz
+virtualenv
+gunicorn
