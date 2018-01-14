@@ -4,9 +4,9 @@ MAINTAINER Drujinin Igor
 
 RUN apt-get -y update
 
-RUN apt-get install -y python3
-RUN apt-get install -y python3-pip nginx
-RUN pip3 install --upgrade pip
+RUN apt-get install -y python3 \
+&& apt-get install -y python3-pip nginx \
+&& pip3 install --upgrade pip
 
 
 ENV PGVER 9.6
@@ -23,27 +23,27 @@ ADD requirements.txt/ $WORK/
 #ADD tech_db_forum/ $WORK/
 WORKDIR $WORK/
 
-RUN pip3 install -r requirements.txt \
-&& nginx -t && cat nginx.conf >> /etc/nginx/sites-available/db \
-&& ln -s /etc/nginx/sites-available/db /etc/nginx/sites-enabled
-&& nginx -t
+RUN pip3 install -r requirements.txt
+RUN nginx -t && cat nginx.conf >> /etc/nginx/sites-available/db \
+&& ln -s /etc/nginx/sites-available/db /etc/nginx/sites-enabled \
+&& nginx -t \
 && service nginx restart
 
 USER postgres
 
-RUN /etc/init.d/postgresql start &&\
-    psql --command "CREATE USER igor WITH SUPERUSER PASSWORD 'qwerty';" &&\
+RUN /etc/init.d/postgresql start && \
+    psql --command "CREATE USER igor WITH SUPERUSER PASSWORD 'qwerty';" && \
     psql --command "CREATE DATABASE flask_db_1 OWNER igor ENCODING 'UTF-8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' TEMPLATE template0;" &&\
-    psql flask_db_1 < flask_db_1.sql &&\
+    psql flask_db_1 < flask_db_1.sql && \
     /etc/init.d/postgresql stop;
 
-RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGVER/main/pg_hba.conf
-RUN echo "listen_addresses='*'" >> /etc/postgresql/$PGVER/main/postgresql.conf
-RUN echo "synchronous_commit = off" >> /etc/postgresql/$PGVER/main/postgresql.conf
-RUN echo "fsync = off" >> /etc/postgresql/$PGVER/main/postgresql.conf
-RUN echo "full_page_writes = off" >> /etc/postgresql/$PGVER/main/postgresql.conf
-RUN echo "wal_buffers = 4MB" >> /etc/postgresql/$PGVER/main/postgresql.conf
-RUN echo "max_parallel_workers_perready_gather  = 4" >> /etc/postgresql/$PGVER/main/postgresql.conf
+RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGVER/main/pg_hba.conf \
+&& echo "listen_addresses='*'" >> /etc/postgresql/$PGVER/main/postgresql.conf \
+&& echo "synchronous_commit = off" >> /etc/postgresql/$PGVER/main/postgresql.conf \
+&& echo "fsync = off" >> /etc/postgresql/$PGVER/main/postgresql.conf \
+&& echo "full_page_writes = off" >> /etc/postgresql/$PGVER/main/postgresql.conf \
+&& echo "wal_buffers = 4MB" >> /etc/postgresql/$PGVER/main/postgresql.conf 
+# echo "max_parallel_workers_perready_gather  = 4" >> /etc/postgresql/$PGVER/main/postgresql.conf
 
 EXPOSE 5432
 
@@ -53,4 +53,4 @@ USER root
 
 EXPOSE 5000
 
-CMD service postgresql start && gunicorn -w 8 -k sync --worker-connections 12 -t 360 -b 0.0.0.0:5000 wsgi:app
+CMD service postgresql start && gunicorn -w 8 -k sync --worker-connections 12 -t 360 -b 0.0.0.0:5001 wsgi:app
