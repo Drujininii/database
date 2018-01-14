@@ -23,17 +23,11 @@ ADD requirements.txt/ $WORK/
 #ADD tech_db_forum/ $WORK/
 WORKDIR $WORK/
 
-RUN pip3 install -r requirements.txt
-
-RUN nginx -t
-
-RUN cat nginx.conf >> /etc/nginx/sites-available/db
-
-RUN ln -s /etc/nginx/sites-available/db /etc/nginx/sites-enabled
-
-RUN nginx -t
-
-RUN service nginx restart
+RUN pip3 install -r requirements.txt \
+&& nginx -t && cat nginx.conf >> /etc/nginx/sites-available/db \
+&& ln -s /etc/nginx/sites-available/db /etc/nginx/sites-enabled
+&& nginx -t
+&& service nginx restart
 
 USER postgres
 
@@ -49,7 +43,7 @@ RUN echo "synchronous_commit = off" >> /etc/postgresql/$PGVER/main/postgresql.co
 RUN echo "fsync = off" >> /etc/postgresql/$PGVER/main/postgresql.conf
 RUN echo "full_page_writes = off" >> /etc/postgresql/$PGVER/main/postgresql.conf
 RUN echo "wal_buffers = 4MB" >> /etc/postgresql/$PGVER/main/postgresql.conf
-RUN echo "max_parallel_workers_per_gather  = 4" >> /etc/postgresql/$PGVER/main/postgresql.conf
+RUN echo "max_parallel_workers_perready_gather  = 4" >> /etc/postgresql/$PGVER/main/postgresql.conf
 
 EXPOSE 5432
 
