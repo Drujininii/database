@@ -460,13 +460,6 @@ CREATE INDEX db_posts_id_mpath_id_index ON db_posts USING btree (id, mpath DESC,
 
 
 --
--- Name: db_posts_id_mpath_index; Type: INDEX; Schema: public; Owner: igor
---
-
-CREATE INDEX db_posts_id_mpath_index ON db_posts USING btree (id, mpath);
-
-
---
 -- Name: db_posts_idx_forum; Type: INDEX; Schema: public; Owner: igor
 --
 
@@ -474,24 +467,17 @@ CREATE INDEX db_posts_idx_forum ON db_posts USING btree (forum);
 
 
 --
--- Name: db_posts_idx_parent; Type: INDEX; Schema: public; Owner: igor
---
-
-CREATE INDEX db_posts_idx_parent ON db_posts USING btree (parent);
-
-
---
--- Name: db_posts_idx_thread; Type: INDEX; Schema: public; Owner: igor
---
-
-CREATE INDEX db_posts_idx_thread ON db_posts USING btree (thread);
-
-
---
 -- Name: db_posts_mpath_index; Type: INDEX; Schema: public; Owner: igor
 --
 
 CREATE INDEX db_posts_mpath_index ON db_posts USING btree (mpath);
+
+
+--
+-- Name: db_posts_parent_thread_mpath_index; Type: INDEX; Schema: public; Owner: igor
+--
+
+CREATE INDEX db_posts_parent_thread_mpath_index ON db_posts USING btree (parent, thread, mpath);
 
 
 --

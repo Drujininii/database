@@ -690,7 +690,11 @@ def get_thread_posts(slug_or_id, params):
             else:
                 since = params['since']
             if params['sort'] == 'parent_tree':
-                cursor.execute(sql, (thread_id, since,
+                cursor.execute('''
+                SELECT mpath[1] FROM db_posts
+                WHERE id = %s''', (since, ))
+                mpath_1 = cursor.fetchone()[0]
+                cursor.execute(sql, (thread_id, mpath_1,
                                      params['limit'], thread_id))
             else:
                 cursor.execute(sql, (thread_id, since,
@@ -846,17 +850,14 @@ def get_posts_sql_by_id_parent_tree_sort(params):
             sub_select.forum, sub_select.isedited,
             sub_select.message, sub_select.parent,
             sub_select.thread, sub_select.mpath FROM(
-               SELECT DB1.id
-            FROM (SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
+            SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
             WHERE DB2.parent = 0
-                AND DB2.thread = %s
-                ) AS DB1
-            ORDER BY DB1.mpath
+            AND DB2.thread = %s
+            ORDER BY DB2.mpath
             LIMIT %s) AS sub_select_2
-            JOIN (
-            SELECT * FROM db_posts
-            WHERE thread = %s) AS sub_select
+            JOIN db_posts AS sub_select
             ON sub_select_2.id = sub_select.mpath[1]
+            WHERE sub_select.thread = %s
             ORDER BY sub_select.mpath'''
         else:
             sql = '''
@@ -866,20 +867,17 @@ def get_posts_sql_by_id_parent_tree_sort(params):
             sub_select.forum, sub_select.isedited,
             sub_select.message, sub_select.parent,
             sub_select.thread, sub_select.mpath  FROM(
-               SELECT DB1.id
-            FROM (SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
+            SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
             WHERE DB2.parent = 0
                 AND DB2.thread = %s
                 AND DB2.mpath[1] > (SELECT mpath[1]
                                     FROM db_posts AS DB3
-                WHERE id = %s)
-                ) AS DB1
-            ORDER BY DB1.mpath
+                        WHERE id = %s)
+            ORDER BY DB2.mpath
             LIMIT %s) AS sub_select_2
-            JOIN (
-            SELECT * FROM db_posts
-            WHERE thread = %s) AS sub_select
+            JOIN db_posts AS sub_select
             ON sub_select_2.id = sub_select.mpath[1]
+            WHERE sub_select.thread = %s
             ORDER BY sub_select.mpath;'''
     else:
         if not params['since']:
@@ -890,18 +888,15 @@ def get_posts_sql_by_id_parent_tree_sort(params):
             sub_select.forum, sub_select.isedited,
             sub_select.message, sub_select.parent,
             sub_select.thread, sub_select.mpath  FROM(
-               SELECT DB1.id
-            FROM (SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
+            SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
             WHERE DB2.parent = 0
-                AND DB2.thread = %s
-                ) AS DB1
-            ORDER BY DB1.mpath DESC 
+            AND DB2.thread = %s
+            ORDER BY DB2.mpath DESC 
             LIMIT %s) AS sub_select_2
-            JOIN (
-            SELECT * FROM db_posts
-            WHERE thread = %s) AS sub_select
+            JOIN db_posts AS sub_select
             ON sub_select_2.id = sub_select.mpath[1]
-            ORDER BY sub_select.mpath DESC ;'''
+            WHERE sub_select.thread = %s
+            ORDER BY sub_select.mpath DESC;'''
         else:
             sql = '''
             SELECT sub_select.id, sub_select.author,
@@ -910,20 +905,15 @@ def get_posts_sql_by_id_parent_tree_sort(params):
             sub_select.forum, sub_select.isedited,
             sub_select.message, sub_select.parent,
             sub_select.thread, sub_select.mpath FROM(
-               SELECT DB1.id
-            FROM (SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
+            SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
             WHERE DB2.parent = 0
                 AND DB2.thread = %s
-                AND DB2.mpath[1] < (SELECT mpath[1]
-                                    FROM db_posts AS DB3
-                WHERE id = %s)
-                ) AS DB1
-            ORDER BY DB1.mpath DESC 
+                AND DB2.mpath[1] < %s
+            ORDER BY DB2.mpath DESC 
             LIMIT %s) AS sub_select_2
-            JOIN (
-            SELECT * FROM db_posts
-            WHERE thread = %s) AS sub_select
+            JOIN db_posts AS sub_select
             ON sub_select_2.id = sub_select.mpath[1]
+            WHERE sub_select.thread = %s
             ORDER BY sub_select.mpath DESC;'''
     return sql
 
