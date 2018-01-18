@@ -42,7 +42,7 @@ RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGVER/main/pg_hba
 && echo "synchronous_commit='off'" >> /etc/postgresql/$PGVER/main/postgresql.conf \
 && echo "fsync = 'off'" >> /etc/postgresql/$PGVER/main/postgresql.conf \
 && echo "max_wal_size = 300MB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
-&& echo "shared_buffers = 16MB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
+&& echo "shared_buffers = 128MB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
 && echo "effective_cache_size = 256MB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
 && echo "work_mem = 16MB" >> /etc/postgresql/$PGVER/main/postgresql.conf
 

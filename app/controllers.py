@@ -266,7 +266,7 @@ def thread_create(slug, thread_data):
     return response
 
 
-# либо индекс сделать либо мени то мени
+# нужен ли select title? может сразу селект из треад?
 def get_forum_threads(slug, parameters):
     cursor = conn.cursor()
     cursor.execute('''
@@ -297,7 +297,7 @@ def get_forum_threads(slug, parameters):
     return response
 
 
-# может создать кластерный индекс?
+# проверить индексы
 def get_forum_threads_sql_by_params(parameters):
     if parameters['order'] == 'ASC':
         if parameters['since']:
@@ -551,6 +551,7 @@ def vote_add(slug_or_id, vote_data):
         return response
 
 
+# проверить индексы!
 def get_vote_sql_by_slug_or_id(slug_or_id):
     sql = '''
         SELECT nickname, voice FROM db_votes
@@ -559,6 +560,7 @@ def get_vote_sql_by_slug_or_id(slug_or_id):
     return sql
 
 
+# проверить индексы!
 def get_full_thread_info_by_slug_or_id(slug_or_id):
     if not slug_or_id.isdigit():
         sql = '''
@@ -577,6 +579,7 @@ def get_full_thread_info_by_slug_or_id(slug_or_id):
     return sql
 
 
+# slug нужен? может просто id
 def get_full_thread_info_by_slug_or_id_for_update(slug_or_id):
     if not slug_or_id.isdigit():
         sql = '''
@@ -613,6 +616,7 @@ def get_insert_sql_vote_by_slug_or_id():
     return sql
 
 
+#проверить индексы
 def get_thread_detail(slug_or_id):
     cursor = conn.cursor()
     sql = get_full_thread_info_by_slug_or_id(slug_or_id)
@@ -661,6 +665,7 @@ def update_thread_info_by_id():
     return sql
 
 
+#проверить индексы
 def get_thread_posts(slug_or_id, params):
     cursor = conn.cursor()
     sql = find_thread_sql_by_slug_or_id(slug_or_id)
@@ -731,7 +736,7 @@ def find_thread_sql_by_slug_or_id(slug_or_id):
     return sql
 
 
-# может сделать кластерный индекс? (проблемы с сортировкой)
+# проверить индесы
 def get_posts_sql_by_id_flat_sort(params):
     if params['order'] == 'ASC':
         if not params['since']:
@@ -839,7 +844,7 @@ def get_posts_sql_by_id_tree_sort(params):
     return sql
 
 
-# очень долгий запрос. может кластерный индекс?
+# проверить индексы (parent thread id mpath?)?
 def get_posts_sql_by_id_parent_tree_sort(params):
     if params['order'] == 'ASC':
         if not params['since']:
@@ -961,7 +966,7 @@ def get_forum_active_users(slug, params):
     return response
 
 
-# очень долгий запрос
+# проверить индесы
 def get_active_users_sql_by_slug(params):
     if params['order'] == 'ASC':
         if not params['since']:
@@ -997,6 +1002,7 @@ def get_active_users_sql_by_slug(params):
     return sql
 
 
+# проверить индексы
 def get_post_detail(id, related):
     cursor = conn.cursor()
     cursor.execute('''
