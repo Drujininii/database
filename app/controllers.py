@@ -872,7 +872,7 @@ def get_posts_sql_by_id_parent_tree_sort(params):
             JOIN (
             SELECT * FROM db_posts
             WHERE thread = %s) AS sub_select
-            ON sub_select_2.id = ANY(sub_select.mpath)
+            ON sub_select_2.id = sub_select.mpath[1]
             ORDER BY sub_select.mpath'''
         else:
             sql = '''
@@ -895,7 +895,7 @@ def get_posts_sql_by_id_parent_tree_sort(params):
             JOIN (
             SELECT * FROM db_posts
             WHERE thread = %s) AS sub_select
-            ON sub_select_2.id = ANY(sub_select.mpath)
+            ON sub_select_2.id = sub_select.mpath[1]
             ORDER BY sub_select.mpath;'''
     else:
         if not params['since']:
@@ -916,7 +916,7 @@ def get_posts_sql_by_id_parent_tree_sort(params):
             JOIN (
             SELECT * FROM db_posts
             WHERE thread = %s) AS sub_select
-            ON sub_select_2.id = ANY(sub_select.mpath)
+            ON sub_select_2.id = sub_select.mpath[1]
             ORDER BY sub_select.mpath DESC ;'''
         else:
             sql = '''
@@ -939,7 +939,7 @@ def get_posts_sql_by_id_parent_tree_sort(params):
             JOIN (
             SELECT * FROM db_posts
             WHERE thread = %s) AS sub_select
-            ON sub_select_2.id = ANY(sub_select.mpath)
+            ON sub_select_2.id = sub_select.mpath[1]
             ORDER BY sub_select.mpath DESC;'''
     return sql
 
@@ -1001,8 +1001,8 @@ def get_active_users_sql_by_slug(params):
             sql = '''
       
             SELECT U.user_id, U.about, U.email, U.fullname, U.nickname
-              FROM db_active_users AS U
-              WHERE U.forum = %s AND U.nickname COLLATE "C" > %s
+            FROM db_active_users AS U
+            WHERE U.forum = %s AND U.nickname > %s
             ORDER BY U.nickname
             LIMIT %s;'''
     else:
