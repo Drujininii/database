@@ -160,6 +160,7 @@ def tuple_to_forum(forum_tuple):
     forum = {'slug': forum_tuple[1],
              'title': forum_tuple[2],
              'user': forum_tuple[3],
+             'posts': forum_tuple[4],
              'threads': forum_tuple[5]}
     return forum
 
@@ -173,16 +174,9 @@ def get_forum_detail(slug):
     """, (slug, ))
     forum_tuple = cursor.fetchone()
     if forum_tuple:
-        cursor.execute("""
-            SELECT count(*) FROM db_posts
-            WHERE forum = %s
-            """, (slug, ))
         conn.commit()
-        posts_number = cursor.fetchone()[0]
         cursor.close()
-
         forum = tuple_to_forum(forum_tuple)
-        forum['posts'] = posts_number
         response = {'forum': forum, 'status_code': 200}
         return response
     conn.commit()
@@ -247,7 +241,8 @@ def thread_create(slug, thread_data):
             try:
                 cursor.execute('''
                                 INSERT INTO db_active_users (forum, nickname)
-                                VALUES (%s, %s);
+                                VALUES (%s, %s)
+                                ON CONFLICT (forum, nickname) DO NOTHING ;
                                 ''', (forum_slug, author))
                 conn.commit()
                 cursor.close()
@@ -431,15 +426,25 @@ def posts_create(slug_or_id, posts_data):
         WHERE id = %s
         ''', (mpath, post_id))
 
-        cursor.execute('''
-                      INSERT INTO db_active_users (forum, nickname)
-                      VALUES (%s, %s);
-        ''', (forum_slug, post['author']))
         posts_full_data.append(
                 posts_add_info(post, date_to_response, forum_slug,
                                parent_id, thread_id, post_id, mpath))
+    active_users = set()
+    cursor.execute('''
+    UPDATE db_forums SET posts = posts + %s
+    WHERE slug = %s
+    ''', (len(posts_data), forum_slug))
     try:
         conn.commit()
+        for post in posts_data:
+            if post['author'].lower() not in active_users:
+                active_users.add(post['author'].lower())
+                cursor.execute('''
+                    INSERT INTO db_active_users (forum, nickname)
+                    VALUES (%s, %s)
+                    ON CONFLICT (forum, nickname) DO NOTHING;
+                    ''', (forum_slug, post['author']))
+                conn.commit()
     except Exception:
         conn.rollback()
         cursor.close()
@@ -506,10 +511,6 @@ def vote_add(slug_or_id, vote_data):
         response = {'message': message_obj, 'status_code': 404}
         return response
     thread = tuple_to_thread(thread_tuple)
-    # cursor_temp.execute('''
-    #                 INSERT INTO test_result_votes (thread_id, nickname, new_voice, slug_or_id)
-    #                 VALUES (%s, %s, %s, %s)
-    #                 ''', (thread['id'], vote_data['nickname'], vote_data['voice'], str(slug_or_id)))
     sql = get_vote_sql_by_slug_or_id(thread['id'])
     cursor_temp.execute(sql, (thread['id'], vote_data['nickname']))
     vote_tuple = cursor_temp.fetchone()
@@ -529,14 +530,6 @@ def vote_add(slug_or_id, vote_data):
                                   vote_data['voice']))
         old_thread_vote = thread['votes']
         thread['votes'] = thread['votes'] + vote_data['voice'] - voice
-        # cursor_temp.execute('''
-        # INSERT INTO test_result_votes (thread_id, nickname,
-        # old_voice, new_voice, old_threads_votes,
-        # returning_votes, thread_slug, "thread votes from update")
-        # VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        # ''', (thread['id'], vote_data['nickname'],
-        #       voice, vote_data['voice'], old_thread_vote,
-        #       thread['votes'], thread['slug'], real_votes))
         cursor_temp.close()
         conn.commit()
         thread['votes'] = real_votes[0]
@@ -676,6 +669,9 @@ def get_thread_posts(slug_or_id, params):
         elif params['sort'] == 'parent_tree':
             sql = get_posts_sql_by_id_parent_tree_sort(params)
         if not params['since']:
+            if params['sort'] == 'parent_tree':
+                cursor.execute(sql, (thread_id, params['limit'], thread_id))
+            else:
                 cursor.execute(sql, (thread_id, params['limit']))
         else:
             since = None
@@ -689,7 +685,7 @@ def get_thread_posts(slug_or_id, params):
                 since = params['since']
             if params['sort'] == 'parent_tree':
                 cursor.execute(sql, (thread_id, since,
-                                     params['limit']))
+                                     params['limit'], thread_id))
             else:
                 cursor.execute(sql, (thread_id, since,
                                      params['limit']))
@@ -730,45 +726,61 @@ def get_posts_sql_by_id_flat_sort(params):
     if params['order'] == 'ASC':
         if not params['since']:
             sql = '''
-            SELECT id, author, 
-            to_char (created::timestamp at time zone 'Etc/UTC', 
-            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), 
-            forum, isedited, message, parent, thread
-            FROM db_posts
-            WHERE thread = %s
-            ORDER BY created, id
-            LIMIT (%s);'''
+            SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+            sub_select.forum, sub_select.isedited, sub_select.message,
+                  sub_select.parent, sub_select.thread
+            FROM (SELECT *
+                  FROM db_posts
+                  WHERE thread = (%s)
+            ) AS sub_select
+            ORDER BY sub_select.created, sub_select.id
+            LIMIT %s;
+'''
         else:
             sql = '''
-            SELECT id, author, 
-            to_char (created::timestamp at time zone 'Etc/UTC', 
-            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), 
-            forum, isedited, message, parent, thread
-            FROM db_posts
-            WHERE thread = %s AND id > %s
-            ORDER BY created, id
-            LIMIT (%s);'''
+            SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+            sub_select.forum, sub_select.isedited, sub_select.message,
+                  sub_select.parent, sub_select.thread
+            FROM (SELECT *
+                  FROM db_posts
+                  WHERE thread = %s AND id > %s
+            ) AS sub_select
+            ORDER BY sub_select.created, sub_select.id
+            LIMIT %s
+;'''
     else:
         if not params['since']:
             sql = '''
-            SELECT id, author, 
-            to_char (created::timestamp at time zone 'Etc/UTC', 
-            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), 
-            forum, isedited, message, parent, thread
-            FROM db_posts
-            WHERE thread = %s
-            ORDER BY created DESC, id DESC
-            LIMIT (%s);'''
+            SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+            sub_select.forum, sub_select.isedited, sub_select.message,
+                  sub_select.parent, sub_select.thread
+            FROM (SELECT *
+                  FROM db_posts
+                  WHERE thread = %s
+            ) AS sub_select
+            ORDER BY sub_select.created DESC, sub_select.id DESC
+            LIMIT %s
+;'''
         else:
             sql = '''
-            SELECT id, author, 
-            to_char (created::timestamp at time zone 'Etc/UTC', 
-            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), 
-            forum, isedited, message, parent, thread
-            FROM db_posts
-            WHERE thread = %s AND id < %s
-            ORDER BY created DESC, id DESC
-            LIMIT (%s);'''
+           SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+            sub_select.forum, sub_select.isedited, sub_select.message,
+                  sub_select.parent, sub_select.thread
+            FROM (SELECT *
+                  FROM db_posts
+                  WHERE thread = %s AND id < %s
+            ) AS sub_select
+            ORDER BY sub_select.created DESC, sub_select.id DESC
+            LIMIT %s
+;'''
     return sql
 
 
@@ -776,45 +788,60 @@ def get_posts_sql_by_id_tree_sort(params):
     if params['order'] == 'ASC':
         if not params['since']:
             sql = '''
-                SELECT id, author, 
-                to_char (created::timestamp at time zone 'Etc/UTC', 
-                'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), 
-                forum, isedited, message, parent, thread
-                FROM db_posts
-                WHERE thread = %s
-                ORDER BY mpath, id
-                LIMIT (%s);'''
+                SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+            sub_select.forum, sub_select.isedited, sub_select.message,
+                  sub_select.parent, sub_select.thread
+            FROM (SELECT *
+                  FROM db_posts
+                  WHERE thread = %s
+            ) AS sub_select
+            ORDER BY sub_select.mpath, sub_select.id
+            LIMIT %s;
+'''
         else:
             sql = '''
-                SELECT id, author, 
-                to_char (created::timestamp at time zone 'Etc/UTC', 
-                'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), 
-                forum, isedited, message, parent, thread
-                FROM db_posts
-                WHERE thread = %s AND mpath > %s
-                ORDER BY mpath, id
-                LIMIT (%s);'''
+                SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+            sub_select.forum, sub_select.isedited, sub_select.message,
+                  sub_select.parent, sub_select.thread
+            FROM (SELECT *
+                  FROM db_posts
+                  WHERE thread = %s AND mpath > %s
+            ) AS sub_select
+            ORDER BY sub_select.mpath, sub_select.id
+            LIMIT %s;;
+'''
     else:
         if not params['since']:
-            sql = '''
-                SELECT id, author, 
-                to_char (created::timestamp at time zone 'Etc/UTC', 
-                'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), 
-                forum, isedited, message, parent, thread
-                FROM db_posts
-                WHERE thread = %s
-                ORDER BY mpath DESC, id DESC
-                LIMIT (%s);'''
+            sql = '''    
+            SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+            sub_select.forum, sub_select.isedited, sub_select.message,
+                  sub_select.parent, sub_select.thread
+            FROM (SELECT *
+                  FROM db_posts
+                  WHERE thread = %s
+            ) AS sub_select
+            ORDER BY sub_select.mpath DESC, sub_select.id DESC
+            LIMIT %s;'''
         else:
             sql = '''
-                SELECT id, author, 
-                to_char (created::TIMESTAMP AT TIME ZONE 'Etc/UTC', 
-                'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), 
-                forum, isedited, message, parent, thread
-                FROM db_posts
-                WHERE thread = %s AND mpath < %s
-                ORDER BY mpath DESC, id DESC
-                LIMIT (%s);'''
+                SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+            sub_select.forum, sub_select.isedited, sub_select.message,
+                  sub_select.parent, sub_select.thread
+            FROM (SELECT *
+                  FROM db_posts
+                  WHERE thread = %s AND mpath < %s
+            ) AS sub_select
+            ORDER BY sub_select.mpath DESC,  sub_select.id DESC
+            LIMIT %s;
+'''
     return sql
 
 
@@ -823,75 +850,91 @@ def get_posts_sql_by_id_parent_tree_sort(params):
     if params['order'] == 'ASC':
         if not params['since']:
             sql = '''
-            SELECT DB1.id, DB1.author,
-            to_char (DB1.created::timestamp at time zone 'Etc/UTC',
+            SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-            DB1.forum, DB1.isedited, DB1.message, DB1.parent,
-            DB1.thread, DB1.mpath
-            FROM db_posts AS DB1
-            JOIN (
-            SELECT id FROM db_posts AS DB2
+            sub_select.forum, sub_select.isedited,
+            sub_select.message, sub_select.parent,
+            sub_select.thread, sub_select.mpath FROM(
+               SELECT DB1.id
+            FROM (SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
             WHERE DB2.parent = 0
-                and DB2.thread = %s
-            ORDER BY DB2.mpath
-            LIMIT %s) AS sub_select
-            ON sub_select.id = ANY(DB1.mpath)
-            ORDER BY DB1.mpath;'''
+                AND DB2.thread = %s
+                ) AS DB1
+            ORDER BY DB1.mpath
+            LIMIT %s) AS sub_select_2
+            JOIN (
+            SELECT * FROM db_posts
+            WHERE thread = %s) AS sub_select
+            ON sub_select_2.id = ANY(sub_select.mpath)
+            ORDER BY sub_select.mpath'''
         else:
             sql = '''
-            SELECT DB1.id, DB1.author,
-            to_char (DB1.created::timestamp at time zone 'Etc/UTC',
+            SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-            DB1.forum, DB1.isedited, DB1.message, DB1.parent,
-            DB1.thread, DB1.mpath
-            FROM db_posts AS DB1
-            JOIN (
-            SELECT id FROM db_posts AS DB2
+            sub_select.forum, sub_select.isedited,
+            sub_select.message, sub_select.parent,
+            sub_select.thread, sub_select.mpath  FROM(
+               SELECT DB1.id
+            FROM (SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
             WHERE DB2.parent = 0
-                and DB2.thread = %s
-                and DB2.mpath[1] > (SELECT mpath[1]
+                AND DB2.thread = %s
+                AND DB2.mpath[1] > (SELECT mpath[1]
                                     FROM db_posts AS DB3
                 WHERE id = %s)
-            ORDER BY DB2.mpath
-            LIMIT %s) AS sub_select
-            ON sub_select.id = ANY(DB1.mpath)
-            ORDER BY DB1.mpath;'''
+                ) AS DB1
+            ORDER BY DB1.mpath
+            LIMIT %s) AS sub_select_2
+            JOIN (
+            SELECT * FROM db_posts
+            WHERE thread = %s) AS sub_select
+            ON sub_select_2.id = ANY(sub_select.mpath)
+            ORDER BY sub_select.mpath;'''
     else:
         if not params['since']:
             sql = '''
-            SELECT DB1.id, DB1.author,
-            to_char (DB1.created::timestamp at time zone 'Etc/UTC',
+             SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-            DB1.forum, DB1.isedited, DB1.message, DB1.parent,
-            DB1.thread, DB1.mpath
-            FROM db_posts AS DB1
-            JOIN (
-            SELECT id FROM db_posts AS DB2
+            sub_select.forum, sub_select.isedited,
+            sub_select.message, sub_select.parent,
+            sub_select.thread, sub_select.mpath  FROM(
+               SELECT DB1.id
+            FROM (SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
             WHERE DB2.parent = 0
-                and DB2.thread = %s
-            ORDER BY DB2.mpath[1] DESC
-            LIMIT %s) AS sub_select
-            ON sub_select.id = ANY(DB1.mpath)
-            ORDER BY DB1.mpath DESC;'''
+                AND DB2.thread = %s
+                ) AS DB1
+            ORDER BY DB1.mpath DESC 
+            LIMIT %s) AS sub_select_2
+            JOIN (
+            SELECT * FROM db_posts
+            WHERE thread = %s) AS sub_select
+            ON sub_select_2.id = ANY(sub_select.mpath)
+            ORDER BY sub_select.mpath DESC ;'''
         else:
             sql = '''
-            SELECT DB1.id, DB1.author,
-            to_char (DB1.created::timestamp at time zone 'Etc/UTC',
+            SELECT sub_select.id, sub_select.author,
+            to_char (sub_select.created::timestamp at time zone 'Etc/UTC',
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-            DB1.forum, DB1.isedited, DB1.message, DB1.parent,
-            DB1.thread, DB1.mpath
-            FROM db_posts AS DB1
-            JOIN (
-            SELECT id FROM db_posts AS DB2
+            sub_select.forum, sub_select.isedited,
+            sub_select.message, sub_select.parent,
+            sub_select.thread, sub_select.mpath FROM(
+               SELECT DB1.id
+            FROM (SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
             WHERE DB2.parent = 0
-                and DB2.thread = %s
-                and DB2.mpath[1] < (SELECT mpath[1]
+                AND DB2.thread = %s
+                AND DB2.mpath[1] < (SELECT mpath[1]
                                     FROM db_posts AS DB3
                 WHERE id = %s)
-            ORDER BY DB2.mpath[1] DESC
-            LIMIT %s) AS sub_select
-            ON sub_select.id = ANY(DB1.mpath)
-            ORDER BY DB1.mpath DESC;'''
+                ) AS DB1
+            ORDER BY DB1.mpath DESC 
+            LIMIT %s) AS sub_select_2
+            JOIN (
+            SELECT * FROM db_posts
+            WHERE thread = %s) AS sub_select
+            ON sub_select_2.id = ANY(sub_select.mpath)
+            ORDER BY sub_select.mpath DESC;'''
     return sql
 
 
@@ -910,6 +953,27 @@ def tuple_to_post(post_tuple):
 
 def get_forum_active_users(slug, params):
     cursor = conn.cursor()
+    # cursor.execute('''
+    # SELECT active_user_id FROM db_active_users
+    # WHERE nickname = 'her_sobachii'
+    # FOR UPDATE;
+    # ''')
+    # id_tuple = cursor.fetchone()
+    # print(id_tuple)
+    # if not id_tuple:
+    #     cursor.execute('''
+    #     DELETE FROM db_active_users
+    #     WHERE active_user_id IN
+    #     (SELECT min(active_user_id)
+    #     FROM db_active_users
+    #     GROUP BY forum, nickname
+    #     HAVING COUNT(*) > 1 ORDER BY COUNT(*));
+    #     ''')
+    #     cursor.execute('''
+    #     INSERT INTO db_active_users (forum, nickname)
+    #     VALUES (%s, %s)
+    #     ''', ('hren', 'her_sobachii'))
+    #     conn.commit()
     cursor.execute('''
     SELECT slug FROM db_forums
     WHERE slug = %s
@@ -943,37 +1007,46 @@ def get_active_users_sql_by_slug(params):
     if params['order'] == 'ASC':
         if not params['since']:
             sql = '''
-            SELECT DISTINCT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
-            FROM db_active_users AS AU
+            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
+            FROM (SELECT *
+                  FROM db_active_users AS AU
+                  WHERE AU.forum = %s
+                  ) AS sub_select
             JOIN db_users AS U USING(nickname)
-            WHERE AU.forum = %s
             ORDER BY U.nickname COLLATE "C"
-            LIMIT (%s);'''
+            LIMIT %s;'''
         else:
             sql = '''
-            SELECT DISTINCT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
-            FROM db_active_users AS AU
+      
+            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
+            FROM (SELECT *
+                  FROM db_active_users AS AU
+                  WHERE AU.forum = %s AND AU.nickname COLLATE "C" > %s COLLATE "C"
+                  ) AS sub_select
             JOIN db_users AS U USING(nickname)
-            WHERE AU.forum = %s and U.nickname COLLATE "C" > %s COLLATE "C"
             ORDER BY U.nickname COLLATE "C"
-            LIMIT (%s);'''
+            LIMIT %s;'''
     else:
         if not params['since']:
             sql = '''
-            SELECT DISTINCT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
-            FROM db_active_users AS AU
+            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
+            FROM (SELECT *
+                  FROM db_active_users AS AU
+                  WHERE AU.forum = %s
+                  ) AS sub_select
             JOIN db_users AS U USING(nickname)
-            WHERE AU.forum = %s
-            ORDER BY U.nickname COLLATE "C" DESC 
-            LIMIT (%s);'''
+            ORDER BY U.nickname COLLATE "C" DESC
+            LIMIT %s;'''
         else:
             sql = '''
-            SELECT DISTINCT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
-            FROM db_active_users AS AU
+            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
+            FROM (SELECT *
+                  FROM db_active_users AS AU
+                  WHERE AU.forum = %s and AU.nickname COLLATE "C" < %s COLLATE "C"
+                  ) AS sub_select
             JOIN db_users AS U USING(nickname)
-            WHERE AU.forum = %s and U.nickname COLLATE "C" < %s COLLATE "C"
-            ORDER BY U.nickname COLLATE "C" DESC 
-            LIMIT (%s);'''
+            ORDER BY U.nickname COLLATE "C" DESC
+            LIMIT %s;'''
     return sql
 
 
@@ -1008,12 +1081,6 @@ def get_post_detail(id, related):
                 cursor.execute(sql, (post['forum'],))
                 forum_tuple = cursor.fetchone()
                 forum = tuple_to_forum(forum_tuple)
-                cursor.execute('''
-                SELECT count(*) FROM db_posts
-                WHERE forum = %s
-                ''', (post['forum'], ))
-                posts_number = cursor.fetchone()[0]
-                forum['posts'] = posts_number
                 post_json['forum'] = forum
         conn.rollback()
         cursor.close()

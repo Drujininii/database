@@ -48,6 +48,8 @@ def user_profile(nickname):
 
 @app.route('/api/forum/create', methods=['POST'])
 def forum_create():
+    print(request.url)
+
     json_request = request.get_json()
     forum_data = json_request
     response = controllers.forum_create(forum_data)
@@ -184,12 +186,16 @@ def post_detail(id):
 
 @app.route('/api/service/status')
 def get_service_status():
+    print(request.url)
+
     response = controllers.get_service_status()
     return json_response(response['service_status'], status_code=response['status_code'])
 
 
 @app.route('/api/service/clear', methods=['POST'])
 def service_clear():
+    print(request.url)
+
     response = controllers.service_clear()
     return json_response({}, status_code=response['status_code'])
 
