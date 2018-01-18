@@ -737,10 +737,8 @@ def get_posts_sql_by_id_flat_sort(params):
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
             sub_select.forum, sub_select.isedited, sub_select.message,
                   sub_select.parent, sub_select.thread
-            FROM (SELECT *
-                  FROM db_posts
-                  WHERE thread = (%s)
-            ) AS sub_select
+            FROM db_posts AS sub_select
+            WHERE thread = (%s)
             ORDER BY sub_select.created, sub_select.id
             LIMIT %s;
 '''
@@ -751,10 +749,8 @@ def get_posts_sql_by_id_flat_sort(params):
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
             sub_select.forum, sub_select.isedited, sub_select.message,
                   sub_select.parent, sub_select.thread
-            FROM (SELECT *
-                  FROM db_posts
-                  WHERE thread = %s AND id > %s
-            ) AS sub_select
+            FROM db_posts AS sub_select
+            WHERE thread = %s AND id > %s
             ORDER BY sub_select.created, sub_select.id
             LIMIT %s
 ;'''
@@ -766,10 +762,8 @@ def get_posts_sql_by_id_flat_sort(params):
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
             sub_select.forum, sub_select.isedited, sub_select.message,
                   sub_select.parent, sub_select.thread
-            FROM (SELECT *
-                  FROM db_posts
-                  WHERE thread = %s
-            ) AS sub_select
+            FROM db_posts AS sub_select
+            WHERE thread = %s
             ORDER BY sub_select.created DESC, sub_select.id DESC
             LIMIT %s
 ;'''
@@ -780,10 +774,8 @@ def get_posts_sql_by_id_flat_sort(params):
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
             sub_select.forum, sub_select.isedited, sub_select.message,
                   sub_select.parent, sub_select.thread
-            FROM (SELECT *
-                  FROM db_posts
-                  WHERE thread = %s AND id < %s
-            ) AS sub_select
+            FROM db_posts AS sub_select
+            WHERE thread = %s AND id < %s
             ORDER BY sub_select.created DESC, sub_select.id DESC
             LIMIT %s;
 ;'''
@@ -799,10 +791,8 @@ def get_posts_sql_by_id_tree_sort(params):
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
             sub_select.forum, sub_select.isedited, sub_select.message,
                   sub_select.parent, sub_select.thread
-            FROM (SELECT *
-                  FROM db_posts
+                  FROM db_posts AS sub_select
                   WHERE thread = %s
-            ) AS sub_select
             ORDER BY sub_select.mpath, sub_select.id
             LIMIT %s;
 '''
@@ -813,10 +803,8 @@ def get_posts_sql_by_id_tree_sort(params):
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
             sub_select.forum, sub_select.isedited, sub_select.message,
                   sub_select.parent, sub_select.thread
-            FROM (SELECT *
-                  FROM db_posts
+                  FROM db_posts AS sub_select
                   WHERE thread = %s AND mpath > %s
-            ) AS sub_select
             ORDER BY sub_select.mpath, sub_select.id
             LIMIT %s;;
 '''
@@ -828,10 +816,8 @@ def get_posts_sql_by_id_tree_sort(params):
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
             sub_select.forum, sub_select.isedited, sub_select.message,
                   sub_select.parent, sub_select.thread
-            FROM (SELECT *
-                  FROM db_posts
+                  FROM db_posts AS sub_select
                   WHERE thread = %s
-            ) AS sub_select
             ORDER BY sub_select.mpath DESC, sub_select.id DESC
             LIMIT %s;'''
         else:
@@ -841,10 +827,8 @@ def get_posts_sql_by_id_tree_sort(params):
             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
             sub_select.forum, sub_select.isedited, sub_select.message,
                   sub_select.parent, sub_select.thread
-            FROM (SELECT *
-                  FROM db_posts
+                  FROM db_posts AS sub_select
                   WHERE thread = %s AND mpath < %s
-            ) AS sub_select
             ORDER BY sub_select.mpath DESC,  sub_select.id DESC
             LIMIT %s;
 '''

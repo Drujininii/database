@@ -495,6 +495,13 @@ CREATE INDEX db_posts_mpath_index ON db_posts USING btree (mpath);
 
 
 --
+-- Name: db_posts_thread_created_id_index; Type: INDEX; Schema: public; Owner: igor
+--
+
+CREATE INDEX db_posts_thread_created_id_index ON db_posts USING btree (thread, created, id);
+
+
+--
 -- Name: db_posts_thread_mpath_index; Type: INDEX; Schema: public; Owner: igor
 --
 
