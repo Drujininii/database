@@ -44,7 +44,7 @@ RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGVER/main/pg_hba
 && echo "max_wal_size = 1GB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
 && echo "shared_buffers = 128MB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
 && echo "effective_cache_size = 256MB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
-&& echo "work_mem = 16MB" >> /etc/postgresql/$PGVER/main/postgresql.conf
+&& echo "work_mem = 8MB" >> /etc/postgresql/$PGVER/main/postgresql.conf
 
 EXPOSE 5432
 
