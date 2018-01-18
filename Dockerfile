@@ -1,4 +1,4 @@
-FROM ubuntu:17.10
+FROM ubuntu:16.04
 
 MAINTAINER Drujinin Igor
 
@@ -9,7 +9,7 @@ RUN apt-get install -y python3 \
 && pip3 install --upgrade pip
 
 
-ENV PGVER 9.6
+ENV PGVER 9.5
 
 RUN apt-get install -y postgresql-$PGVER
 

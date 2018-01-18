@@ -190,12 +190,12 @@ def get_forum_detail(slug):
 def thread_create(slug, thread_data):
     cursor = conn.cursor()
     cursor.execute('''
-    SELECT nickname FROM db_users
+    SELECT * FROM db_users
     WHERE nickname = %s
     ''', (thread_data['author'], ))
     author_tuple = cursor.fetchone()
     if author_tuple:
-        author = author_tuple[0]
+        author = author_tuple[4]
         cursor.execute('''
         SELECT slug FROM db_forums
         WHERE slug = %s
@@ -240,10 +240,11 @@ def thread_create(slug, thread_data):
             cursor = conn.cursor()
             try:
                 cursor.execute('''
-                                INSERT INTO db_active_users (forum, nickname)
-                                VALUES (%s, %s)
+                                INSERT INTO db_active_users (forum, nickname, user_id, about, email, fullname)
+                                VALUES (%s, %s, %s, %s, %s, %s)
                                 ON CONFLICT (forum, nickname) DO NOTHING ;
-                                ''', (forum_slug, author))
+                                ''', (forum_slug, author, author_tuple[0], author_tuple[1], author_tuple[2],
+                                      author_tuple[3]))
                 conn.commit()
                 cursor.close()
 
@@ -382,7 +383,7 @@ def posts_create(slug_or_id, posts_data):
         # post_id += 1
         mpath = list()
         cursor.execute('''
-            SELECT user_id FROM db_users
+            SELECT nickname FROM db_users
             WHERE nickname = %s;''', (post['author'], ))
         user_tuple = cursor.fetchone()
         if not user_tuple:
@@ -438,14 +439,19 @@ def posts_create(slug_or_id, posts_data):
         conn.commit()
         for post in posts_data:
             if post['author'].lower() not in active_users:
+                cursor.execute('''
+                            SELECT * FROM db_users
+                            WHERE nickname = %s;''', (post['author'],))
+                user_tuple = cursor.fetchone()
                 active_users.add(post['author'].lower())
                 cursor.execute('''
-                    INSERT INTO db_active_users (forum, nickname)
-                    VALUES (%s, %s)
-                    ON CONFLICT (forum, nickname) DO NOTHING;
-                    ''', (forum_slug, post['author']))
+                    INSERT INTO db_active_users (forum, nickname, user_id, about, email, fullname)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (forum, nickname) DO NOTHING ;
+                    ''', (forum_slug, post['author'], user_tuple[0], user_tuple[1], user_tuple[2],
+                          user_tuple[3]))
                 conn.commit()
-    except Exception:
+    except Exception as err:
         conn.rollback()
         cursor.close()
         message_obj = {'message': 'Cant find thread'}
@@ -779,7 +785,7 @@ def get_posts_sql_by_id_flat_sort(params):
                   WHERE thread = %s AND id < %s
             ) AS sub_select
             ORDER BY sub_select.created DESC, sub_select.id DESC
-            LIMIT %s
+            LIMIT %s;
 ;'''
     return sql
 
@@ -953,27 +959,6 @@ def tuple_to_post(post_tuple):
 
 def get_forum_active_users(slug, params):
     cursor = conn.cursor()
-    # cursor.execute('''
-    # SELECT active_user_id FROM db_active_users
-    # WHERE nickname = 'her_sobachii'
-    # FOR UPDATE;
-    # ''')
-    # id_tuple = cursor.fetchone()
-    # print(id_tuple)
-    # if not id_tuple:
-    #     cursor.execute('''
-    #     DELETE FROM db_active_users
-    #     WHERE active_user_id IN
-    #     (SELECT min(active_user_id)
-    #     FROM db_active_users
-    #     GROUP BY forum, nickname
-    #     HAVING COUNT(*) > 1 ORDER BY COUNT(*));
-    #     ''')
-    #     cursor.execute('''
-    #     INSERT INTO db_active_users (forum, nickname)
-    #     VALUES (%s, %s)
-    #     ''', ('hren', 'her_sobachii'))
-    #     conn.commit()
     cursor.execute('''
     SELECT slug FROM db_forums
     WHERE slug = %s
@@ -1007,45 +992,33 @@ def get_active_users_sql_by_slug(params):
     if params['order'] == 'ASC':
         if not params['since']:
             sql = '''
-            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
-            FROM (SELECT *
-                  FROM db_active_users AS AU
-                  WHERE AU.forum = %s
-                  ) AS sub_select
-            JOIN db_users AS U USING(nickname)
-            ORDER BY U.nickname COLLATE "C"
+            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname
+            FROM db_active_users AS U
+            WHERE U.forum = %s
+            ORDER BY U.nickname
             LIMIT %s;'''
         else:
             sql = '''
       
-            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
-            FROM (SELECT *
-                  FROM db_active_users AS AU
-                  WHERE AU.forum = %s AND AU.nickname COLLATE "C" > %s COLLATE "C"
-                  ) AS sub_select
-            JOIN db_users AS U USING(nickname)
-            ORDER BY U.nickname COLLATE "C"
+            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname
+              FROM db_active_users AS U
+              WHERE U.forum = %s AND U.nickname COLLATE "C" > %s
+            ORDER BY U.nickname
             LIMIT %s;'''
     else:
         if not params['since']:
             sql = '''
-            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
-            FROM (SELECT *
-                  FROM db_active_users AS AU
-                  WHERE AU.forum = %s
-                  ) AS sub_select
-            JOIN db_users AS U USING(nickname)
-            ORDER BY U.nickname COLLATE "C" DESC
+            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname
+                  FROM db_active_users AS U
+                  WHERE U.forum = %s
+            ORDER BY U.nickname DESC
             LIMIT %s;'''
         else:
             sql = '''
-            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname COLLATE "C"
-            FROM (SELECT *
-                  FROM db_active_users AS AU
-                  WHERE AU.forum = %s and AU.nickname COLLATE "C" < %s COLLATE "C"
-                  ) AS sub_select
-            JOIN db_users AS U USING(nickname)
-            ORDER BY U.nickname COLLATE "C" DESC
+            SELECT U.user_id, U.about, U.email, U.fullname, U.nickname
+                  FROM db_active_users AS U
+                  WHERE U.forum = %s and U.nickname  < %s
+            ORDER BY U.nickname DESC
             LIMIT %s;'''
     return sql
 

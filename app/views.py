@@ -48,7 +48,6 @@ def user_profile(nickname):
 
 @app.route('/api/forum/create', methods=['POST'])
 def forum_create():
-    print(request.url)
 
     json_request = request.get_json()
     forum_data = json_request
@@ -115,9 +114,6 @@ def vote_add(slug_or_id):
     vote_data = json_request
     response = controllers.vote_add(slug_or_id, vote_data)
     if response['status_code'] == 200:
-        thread = response['thread']
-        # thread['message'] = ''
-        # print(json.dumps(thread))
         return json_response(response['thread'], status_code=response['status_code'])
     return json_response(response['message'], status_code=response['status_code'])
 
@@ -186,7 +182,6 @@ def post_detail(id):
 
 @app.route('/api/service/status')
 def get_service_status():
-    print(request.url)
 
     response = controllers.get_service_status()
     return json_response(response['service_status'], status_code=response['status_code'])
@@ -194,7 +189,6 @@ def get_service_status():
 
 @app.route('/api/service/clear', methods=['POST'])
 def service_clear():
-    print(request.url)
 
     response = controllers.service_clear()
     return json_response({}, status_code=response['status_code'])

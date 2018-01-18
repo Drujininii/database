@@ -100,7 +100,11 @@ SET default_with_oids = false;
 CREATE TABLE db_active_users (
     active_user_id bigint NOT NULL,
     forum citext NOT NULL,
-    nickname citext NOT NULL
+    nickname citext NOT NULL,
+    user_id integer,
+    about text,
+    email citext,
+    fullname citext
 );
 
 
@@ -428,10 +432,24 @@ CREATE INDEX db_active_users_idx_nickname ON db_active_users USING btree (nickna
 
 
 --
+-- Name: db_forums_slug_title_index; Type: INDEX; Schema: public; Owner: igor
+--
+
+CREATE INDEX db_forums_slug_title_index ON db_forums USING btree (slug, title);
+
+
+--
 -- Name: db_forums_slug_uindex; Type: INDEX; Schema: public; Owner: igor
 --
 
 CREATE UNIQUE INDEX db_forums_slug_uindex ON db_forums USING btree (slug);
+
+
+--
+-- Name: db_posts_created_id_index; Type: INDEX; Schema: public; Owner: igor
+--
+
+CREATE INDEX db_posts_created_id_index ON db_posts USING btree (created DESC, id DESC);
 
 
 --
@@ -512,10 +530,17 @@ CREATE UNIQUE INDEX db_users_nickname_uindex ON db_users USING btree (nickname);
 
 
 --
--- Name: idx_db_users_nickname_collate_c; Type: INDEX; Schema: public; Owner: igor
+-- Name: idx_db_posts_id_mpath; Type: INDEX; Schema: public; Owner: igor
 --
 
-CREATE INDEX idx_db_users_nickname_collate_c ON db_users USING btree (nickname COLLATE "C");
+CREATE INDEX idx_db_posts_id_mpath ON db_posts USING btree (id, (mpath[1]));
+
+
+--
+-- Name: idx_db_posts_id_mpath_only; Type: INDEX; Schema: public; Owner: igor
+--
+
+CREATE INDEX idx_db_posts_id_mpath_only ON db_posts USING btree ((mpath[1]));
 
 
 --
