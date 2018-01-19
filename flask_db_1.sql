@@ -495,6 +495,20 @@ CREATE INDEX idx_db_posts_thread_mpath_id_chunk ON db_posts USING btree (thread,
 
 
 --
+-- Name: idx_thread_id_nickname_voice; Type: INDEX; Schema: public; Owner: igor
+--
+
+CREATE INDEX idx_thread_id_nickname_voice ON db_votes USING btree (thread_id, nickname, voice);
+
+
+--
+-- Name: idx_thread_mpath_1_desc; Type: INDEX; Schema: public; Owner: igor
+--
+
+CREATE INDEX idx_thread_mpath_1_desc ON db_posts USING btree (thread, (mpath[1]) DESC);
+
+
+--
 -- Name: idx_uniq_nickname_thread_id; Type: INDEX; Schema: public; Owner: igor
 --
 

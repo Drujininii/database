@@ -815,7 +815,7 @@ def get_posts_sql_by_id_tree_sort(params):
                   FROM db_posts AS sub_select
                   WHERE thread = %s AND mpath > %s
             ORDER BY sub_select.mpath, sub_select.id
-            LIMIT %s;;
+            LIMIT %s;
 '''
     else:
         if not params['since']:
