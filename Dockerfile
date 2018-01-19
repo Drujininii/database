@@ -42,9 +42,9 @@ RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGVER/main/pg_hba
 && echo "synchronous_commit='off'" >> /etc/postgresql/$PGVER/main/postgresql.conf \
 && echo "fsync = 'off'" >> /etc/postgresql/$PGVER/main/postgresql.conf \
 && echo "max_wal_size = 1GB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
-&& echo "shared_buffers = 128MB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
-&& echo "effective_cache_size = 256MB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
-&& echo "work_mem = 8MB" >> /etc/postgresql/$PGVER/main/postgresql.conf
+&& echo "shared_buffers = 256MB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
+&& echo "effective_cache_size = 128MB" >> /etc/postgresql/$PGVER/main/postgresql.conf \
+&& echo "work_mem = 4MB" >> /etc/postgresql/$PGVER/main/postgresql.conf
 
 EXPOSE 5432
 
@@ -54,4 +54,4 @@ USER root
 
 EXPOSE 5000
 
-CMD service postgresql start && gunicorn -w 3 -k sync --worker-connections 6 -t 30 -b 0.0.0.0:5000 wsgi:app
+CMD service postgresql start && gunicorn -w 9 -k sync --worker-connections 12 -t 90 -b 0.0.0.0:5000 wsgi:app
