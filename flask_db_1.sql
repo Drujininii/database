@@ -446,55 +446,6 @@ CREATE UNIQUE INDEX db_forums_slug_uindex ON db_forums USING btree (slug);
 
 
 --
--- Name: db_posts_created_id_index; Type: INDEX; Schema: public; Owner: igor
---
-
-CREATE INDEX db_posts_created_id_index ON db_posts USING btree (created DESC, id DESC);
-
-
---
--- Name: db_posts_id_mpath_id_index; Type: INDEX; Schema: public; Owner: igor
---
-
-CREATE INDEX db_posts_id_mpath_id_index ON db_posts USING btree (id, mpath DESC, id);
-
-
---
--- Name: db_posts_idx_forum; Type: INDEX; Schema: public; Owner: igor
---
-
-CREATE INDEX db_posts_idx_forum ON db_posts USING btree (forum);
-
-
---
--- Name: db_posts_mpath_index; Type: INDEX; Schema: public; Owner: igor
---
-
-CREATE INDEX db_posts_mpath_index ON db_posts USING btree (mpath);
-
-
---
--- Name: db_posts_parent_thread_mpath_index; Type: INDEX; Schema: public; Owner: igor
---
-
-CREATE INDEX db_posts_parent_thread_mpath_index ON db_posts USING btree (parent, thread, mpath);
-
-
---
--- Name: db_posts_thread_created_id_index; Type: INDEX; Schema: public; Owner: igor
---
-
-CREATE INDEX db_posts_thread_created_id_index ON db_posts USING btree (thread, created, id);
-
-
---
--- Name: db_posts_thread_mpath_index; Type: INDEX; Schema: public; Owner: igor
---
-
-CREATE INDEX db_posts_thread_mpath_index ON db_posts USING btree (thread, mpath DESC);
-
-
---
 -- Name: db_threads_idx_forum_created; Type: INDEX; Schema: public; Owner: igor
 --
 
@@ -523,17 +474,24 @@ CREATE UNIQUE INDEX db_users_nickname_uindex ON db_users USING btree (nickname);
 
 
 --
--- Name: idx_db_posts_id_mpath; Type: INDEX; Schema: public; Owner: igor
+-- Name: idx_db_posts_thread_mapth_parent_0_created; Type: INDEX; Schema: public; Owner: igor
 --
 
-CREATE INDEX idx_db_posts_id_mpath ON db_posts USING btree (id, (mpath[1]));
+CREATE INDEX idx_db_posts_thread_mapth_parent_0_created ON db_posts USING btree (thread, mpath);
 
 
 --
--- Name: idx_db_posts_id_mpath_only; Type: INDEX; Schema: public; Owner: igor
+-- Name: idx_db_posts_thread_mpath; Type: INDEX; Schema: public; Owner: igor
 --
 
-CREATE INDEX idx_db_posts_id_mpath_only ON db_posts USING btree ((mpath[1]));
+CREATE INDEX idx_db_posts_thread_mpath ON db_posts USING btree (thread, mpath, id);
+
+
+--
+-- Name: idx_db_posts_thread_mpath_id_chunk; Type: INDEX; Schema: public; Owner: igor
+--
+
+CREATE INDEX idx_db_posts_thread_mpath_id_chunk ON db_posts USING btree (thread, (mpath[1])) WHERE (parent = 0);
 
 
 --

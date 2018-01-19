@@ -875,9 +875,7 @@ def get_posts_sql_by_id_parent_tree_sort(params):
             SELECT DB2.id, DB2.mpath FROM db_posts AS DB2
             WHERE DB2.parent = 0
                 AND DB2.thread = %s
-                AND DB2.mpath[1] > (SELECT mpath[1]
-                                    FROM db_posts AS DB3
-                        WHERE id = %s)
+                AND DB2.mpath[1] > %s
             ORDER BY DB2.mpath
             LIMIT %s) AS sub_select_2
             JOIN db_posts AS sub_select
