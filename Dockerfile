@@ -61,4 +61,4 @@ USER root
 
 EXPOSE 5000
 
-CMD service postgresql start && service nginx start & gunicorn -w 6 -k sync --worker-connections 8 -t 90 -b 0.0.0.0:5001 wsgi:app
+CMD service postgresql start && service nginx start & gunicorn -w 6 -k sync --worker-connections 8 -b 0.0.0.0:5001 wsgi:app
