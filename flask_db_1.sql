@@ -481,10 +481,10 @@ CREATE INDEX idx_db_posts_thread_mapth_parent_0_created ON db_posts USING btree 
 
 
 --
--- Name: idx_db_posts_thread_mpath; Type: INDEX; Schema: public; Owner: igor
+-- Name: idx_db_posts_thread_mpath_id; Type: INDEX; Schema: public; Owner: igor
 --
 
-CREATE INDEX idx_db_posts_thread_mpath ON db_posts USING btree (thread, mpath, id);
+CREATE INDEX idx_db_posts_thread_mpath_id ON db_posts USING btree (thread, mpath, id);
 
 
 --
@@ -492,6 +492,20 @@ CREATE INDEX idx_db_posts_thread_mpath ON db_posts USING btree (thread, mpath, i
 --
 
 CREATE INDEX idx_db_posts_thread_mpath_id_chunk ON db_posts USING btree (thread, (mpath[1])) WHERE (parent = 0);
+
+
+--
+-- Name: idx_posts_thread_created_id; Type: INDEX; Schema: public; Owner: igor
+--
+
+CREATE INDEX idx_posts_thread_created_id ON db_posts USING btree (thread, created, id);
+
+
+--
+-- Name: idx_round; Type: INDEX; Schema: public; Owner: igor
+--
+
+CREATE INDEX idx_round ON db_active_users USING btree (forum, nickname, user_id, about, email, fullname, nickname);
 
 
 --
