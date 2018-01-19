@@ -24,10 +24,17 @@ ADD requirements.txt/ $WORK/
 WORKDIR $WORK/
 
 RUN pip3 install -r requirements.txt
-RUN nginx -t && cat nginx.conf >> /etc/nginx/sites-available/db \
-&& ln -s /etc/nginx/sites-available/db /etc/nginx/sites-enabled \
-&& nginx -t \
-&& service nginx restart
+#RUN nginx -t && cat nginx.conf >> /etc/nginx/sites-available/db \
+#&& ln -s /etc/nginx/sites-available/db /etc/nginx/sites-enabled \
+#&& nginx -t 
+
+RUN rm -v /etc/nginx/nginx.conf
+
+ADD nginx.conf /etc/nginx/
+
+RUN echo "daemon off;" >> /etc/nginx/nginx.conf
+
+RUN nginx -t
 
 USER postgres
 
@@ -54,4 +61,4 @@ USER root
 
 EXPOSE 5000
 
-CMD service postgresql start && gunicorn -w 9 -k sync --worker-connections 12 -t 90 -b 0.0.0.0:5000 wsgi:app
+CMD service postgresql start && service nginx start & gunicorn -w 6 -k sync --worker-connections 8 -t 90 -b 0.0.0.0:5001 wsgi:app
